@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import { authRoutes } from './auth/routes';
 import { syncRoutes } from './sync/routes';
 import type { Env } from './env';
+import { DATABASE_ID } from './sync/collections';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -19,7 +20,7 @@ app.use('*', async (c, next) => {
   })(c, next);
 });
 
-app.get('/health', (c) => c.json({ ok: true }));
+app.get('/health', (c) => c.json({ ok: true, databaseId: DATABASE_ID }));
 app.route('/auth', authRoutes);
 app.route('/sync', syncRoutes);
 
