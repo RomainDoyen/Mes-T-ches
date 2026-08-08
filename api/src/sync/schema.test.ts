@@ -1,10 +1,45 @@
 import { describe, expect, it } from 'vitest';
 import { payloadToAppwrite } from './payload';
+import { buildListQueries } from './queries';
 import {
   isCloudWinner,
   pushBodySchema,
   toCloudDoc,
 } from './schema';
+
+describe('buildListQueries', () => {
+  it('emits Appwrite JSON query strings (not legacy equal("…"))', () => {
+    const queries = buildListQueries(
+      'user-1',
+      '1970-01-01T00:00:00.000Z',
+      'cursor-9',
+    );
+
+    for (const q of queries) {
+      expect(() => JSON.parse(q)).not.toThrow();
+      expect(q.startsWith('equal(')).toBe(false);
+    }
+
+    expect(JSON.parse(queries[0])).toEqual({
+      method: 'equal',
+      attribute: 'userId',
+      values: ['user-1'],
+    });
+    expect(JSON.parse(queries[1])).toEqual({
+      method: 'greaterThan',
+      attribute: 'updatedAt',
+      values: ['1970-01-01T00:00:00.000Z'],
+    });
+    expect(JSON.parse(queries[2])).toEqual({
+      method: 'limit',
+      values: [100],
+    });
+    expect(JSON.parse(queries[3])).toEqual({
+      method: 'cursorAfter',
+      values: ['cursor-9'],
+    });
+  });
+});
 
 describe('payloadToAppwrite', () => {
   it('maps camelCase profile fields and drops id', () => {

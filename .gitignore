@@ -25,11 +25,21 @@ web-ext.config.ts
 *.sln
 *.sw?
 
+# Secrets / env (never push)
+.env
+.env.*
+!.env.example
+api/.dev.vars
+api/.env
+api/.env.*
+!api/.dev.vars.example
+
 # API Worker
 api/node_modules/
 api/.wrangler/
-api/.dev.vars
 
 # Scratch
 .superpowers/
 .tmp-chrome-profile*/
+.tmp-chrome-tags*/
+

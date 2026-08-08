@@ -1,5 +1,7 @@
 import { transaction } from '@/lib/db/client';
+import { enqueueAllLocalRelations } from '@/lib/repositories/tasks';
 import { apiFetch } from './client';
+import { taskTagEntityId } from './ids';
 import {
   deleteEntity,
   docId,
@@ -20,6 +22,8 @@ const SYNC_ENTITY_ORDER: SyncEntity[] = [
   'subtasks',
 ];
 
+const APPWRITE_UID = /^[a-zA-Z0-9][a-zA-Z0-9_]{0,35}$/;
+
 type PullResponse = {
   since: string;
   documents: Record<SyncEntity, CloudDocument[]>;
@@ -34,6 +38,26 @@ function lastSyncKey(userId: string): string {
   return `sync:lastSyncAt:${userId}`;
 }
 
+/** Bumped when task_tag id format changes (Appwrite ≤36 chars). */
+function relationsSeedKey(userId: string): string {
+  return `sync:relationsSeeded:v2:${userId}`;
+}
+
+function isValidAppwriteUid(id: string): boolean {
+  return id.length <= 36 && APPWRITE_UID.test(id);
+}
+
+/** Fix legacy `taskId__tagId` outbox rows that Appwrite rejects. */
+function normalizeOutboxEntry(entry: OutboxEntry): OutboxEntry {
+  if (entry.entity !== 'task_tags') return entry;
+  const taskId = String(entry.payload.taskId ?? '');
+  const tagId = String(entry.payload.tagId ?? '');
+  if (!taskId || !tagId) return entry;
+  const entityId = taskTagEntityId(taskId, tagId);
+  if (entry.entityId === entityId) return entry;
+  return { ...entry, entityId };
+}
+
 export async function getLastSyncAt(userId: string): Promise<string | null> {
   const stored = await chrome.storage.local.get([lastSyncKey(userId)]);
   return (stored[lastSyncKey(userId)] as string | undefined) ?? null;
@@ -44,6 +68,24 @@ export async function setLastSyncAt(
   iso: string,
 ): Promise<void> {
   await chrome.storage.local.set({ [lastSyncKey(userId)]: iso });
+}
+
+async function seedRelationsOnce(userId: string): Promise<void> {
+  const key = relationsSeedKey(userId);
+  const stored = await chrome.storage.local.get([key]);
+  if (stored[key]) return;
+
+  // Drop invalid legacy task_tags outbox rows before re-seeding.
+  const entries = await listOutbox();
+  const drop = entries
+    .filter(
+      (e) => e.entity === 'task_tags' && !isValidAppwriteUid(e.entityId),
+    )
+    .map((e) => e.id);
+  if (drop.length > 0) await removeOutbox(drop);
+
+  await enqueueAllLocalRelations();
+  await chrome.storage.local.set({ [key]: true });
 }
 
 function normalizeCloudDoc(doc: Record<string, unknown>): CloudDocument {
@@ -87,16 +129,20 @@ export async function runPull(token: string, userId: string): Promise<void> {
 }
 
 export async function runPush(token: string, userId: string): Promise<void> {
+  await seedRelationsOnce(userId);
   const entries = await listOutbox();
   if (entries.length === 0) return;
 
-  const mutations = entries.map((entry: OutboxEntry) => ({
-    collection: entry.entity,
-    id: entry.entityId,
-    op: entry.op,
-    payload: entry.payload,
-    updatedAt: entry.updatedAt,
-  }));
+  const mutations = entries.map((entry: OutboxEntry) => {
+    const normalized = normalizeOutboxEntry(entry);
+    return {
+      collection: normalized.entity,
+      id: normalized.entityId,
+      op: normalized.op,
+      payload: normalized.payload,
+      updatedAt: normalized.updatedAt,
+    };
+  });
 
   const response = await apiFetch<PushResponse>('/sync/push', {
     method: 'POST',

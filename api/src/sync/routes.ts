@@ -10,6 +10,7 @@ import { requireAuth, type AuthVars } from '../auth/middleware';
 import type { Env } from '../env';
 import { COLLECTIONS, DATABASE_ID, type CollectionKey } from './collections';
 import { existingToAppwrite, payloadToAppwrite } from './payload';
+import { PAGE_SIZE, buildListQueries } from './queries';
 import {
   emptyDocumentsRecord,
   isCloudWinner,
@@ -20,18 +21,7 @@ import {
 } from './schema';
 
 const DEFAULT_SINCE = '1970-01-01T00:00:00.000Z';
-const PAGE_SIZE = 100;
 const MAX_PAGES = 10;
-
-function buildListQueries(userId: string, since: string, cursor?: string): string[] {
-  const queries = [
-    `equal("userId", ["${userId}"])`,
-    `greaterThan("updatedAt", ["${since}"])`,
-    `limit(${PAGE_SIZE})`,
-  ];
-  if (cursor) queries.push(`cursorAfter("${cursor}")`);
-  return queries;
-}
 
 async function pullCollection(
   env: Env,

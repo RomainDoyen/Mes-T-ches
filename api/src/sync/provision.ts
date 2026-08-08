@@ -1,5 +1,11 @@
-import type { Env } from '../env';
-import { COLLECTIONS, DATABASE_ID } from './collections';
+import { COLLECTIONS, DATABASE_ID, DATABASE_NAME } from './collections';
+
+/** Minimal Appwrite credentials (Worker Env or CLI). */
+export type AppwriteCredentials = {
+  APPWRITE_ENDPOINT: string;
+  APPWRITE_PROJECT_ID: string;
+  APPWRITE_API_KEY: string;
+};
 
 type ColumnSpec =
   | { key: string; type: 'string'; size: number; required: boolean }
@@ -117,12 +123,14 @@ export const TABLE_SPECS: TableSpec[] = [
   },
 ];
 
-function endpoint(env: Env) {
+export type ProvisionLogEntry = { step: string; ok: boolean; detail?: string };
+
+function endpoint(env: AppwriteCredentials) {
   return env.APPWRITE_ENDPOINT.replace(/\/$/, '');
 }
 
 async function call(
-  env: Env,
+  env: AppwriteCredentials,
   method: string,
   path: string,
   body?: Record<string, unknown>,
@@ -158,7 +166,28 @@ function messageOf(data: unknown): string {
   return String(data ?? '');
 }
 
-export async function inspectSchema(env: Env) {
+/** Create the TablesDB database if missing (idempotent). */
+export async function ensureDatabase(
+  env: AppwriteCredentials,
+): Promise<ProvisionLogEntry> {
+  const existing = await call(env, 'GET', `/tablesdb/${DATABASE_ID}`);
+  if (existing.ok) {
+    return { step: `database:${DATABASE_ID}`, ok: true, detail: 'exists' };
+  }
+
+  const created = await call(env, 'POST', '/tablesdb', {
+    databaseId: DATABASE_ID,
+    name: DATABASE_NAME,
+    enabled: true,
+  });
+  return {
+    step: `database:${DATABASE_ID}`,
+    ok: created.ok || created.status === 409,
+    detail: created.ok ? 'created' : messageOf(created.data),
+  };
+}
+
+export async function inspectSchema(env: AppwriteCredentials) {
   const tables: Record<string, unknown> = {};
   for (const spec of TABLE_SPECS) {
     const table = await call(env, 'GET', `/tablesdb/${DATABASE_ID}/tables/${spec.id}`);
@@ -172,8 +201,11 @@ export async function inspectSchema(env: Env) {
   return { databaseId: DATABASE_ID, tables };
 }
 
-export async function provisionSchema(env: Env, onlyTableId?: string) {
-  const log: Array<{ step: string; ok: boolean; detail?: string }> = [];
+export async function provisionSchema(
+  env: AppwriteCredentials,
+  onlyTableId?: string,
+) {
+  const log: ProvisionLogEntry[] = [];
   const specs = onlyTableId
     ? TABLE_SPECS.filter((s) => s.id === onlyTableId)
     : TABLE_SPECS;
@@ -245,4 +277,24 @@ export async function provisionSchema(env: Env, onlyTableId?: string) {
   }
 
   return { databaseId: DATABASE_ID, log };
+}
+
+/** Ensure database + all tables/columns/indexes (CLI / CI). */
+export async function provisionAll(env: AppwriteCredentials) {
+  const log: ProvisionLogEntry[] = [];
+  const db = await ensureDatabase(env);
+  log.push(db);
+  if (!db.ok) {
+    return { databaseId: DATABASE_ID, ok: false as const, log };
+  }
+
+  const schema = await provisionSchema(env);
+  log.push(...schema.log);
+  const ok = log.every((entry) => entry.ok);
+  return {
+    databaseId: DATABASE_ID,
+    ok,
+    error: 'error' in schema ? schema.error : undefined,
+    log,
+  };
 }

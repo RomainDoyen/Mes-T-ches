@@ -14,37 +14,55 @@ async function getUserId(): Promise<string | null> {
   return user?.id ?? null;
 }
 
+/** Serialize read-modify-write so parallel void enqueueOutbox calls don't drop entries. */
+let writeChain: Promise<void> = Promise.resolve();
+
+function withOutboxLock<T>(fn: () => Promise<T>): Promise<T> {
+  const run = writeChain.then(fn, fn);
+  writeChain = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
+}
+
 export async function enqueueOutbox(
   entry: Omit<OutboxEntry, 'id'>,
 ): Promise<void> {
-  const userId = await getUserId();
-  if (!userId) return;
+  return withOutboxLock(async () => {
+    const userId = await getUserId();
+    if (!userId) return;
 
-  const key = outboxKey(userId);
-  const stored = await chrome.storage.local.get([key]);
-  const list = (stored[key] as OutboxEntry[] | undefined) ?? [];
-  const next: OutboxEntry = { ...entry, id: createId() };
-  await chrome.storage.local.set({ [key]: [...list, next] });
+    const key = outboxKey(userId);
+    const stored = await chrome.storage.local.get([key]);
+    const list = (stored[key] as OutboxEntry[] | undefined) ?? [];
+    const next: OutboxEntry = { ...entry, id: createId() };
+    await chrome.storage.local.set({ [key]: [...list, next] });
+  });
 }
 
 export async function listOutbox(): Promise<OutboxEntry[]> {
-  const userId = await getUserId();
-  if (!userId) return [];
+  return withOutboxLock(async () => {
+    const userId = await getUserId();
+    if (!userId) return [];
 
-  const key = outboxKey(userId);
-  const stored = await chrome.storage.local.get([key]);
-  return (stored[key] as OutboxEntry[] | undefined) ?? [];
+    const key = outboxKey(userId);
+    const stored = await chrome.storage.local.get([key]);
+    return (stored[key] as OutboxEntry[] | undefined) ?? [];
+  });
 }
 
 export async function removeOutbox(ids: string[]): Promise<void> {
-  const userId = await getUserId();
-  if (!userId || ids.length === 0) return;
+  return withOutboxLock(async () => {
+    const userId = await getUserId();
+    if (!userId || ids.length === 0) return;
 
-  const key = outboxKey(userId);
-  const stored = await chrome.storage.local.get([key]);
-  const list = (stored[key] as OutboxEntry[] | undefined) ?? [];
-  const drop = new Set(ids);
-  await chrome.storage.local.set({
-    [key]: list.filter((entry) => !drop.has(entry.id)),
+    const key = outboxKey(userId);
+    const stored = await chrome.storage.local.get([key]);
+    const list = (stored[key] as OutboxEntry[] | undefined) ?? [];
+    const drop = new Set(ids);
+    await chrome.storage.local.set({
+      [key]: list.filter((entry) => !drop.has(entry.id)),
+    });
   });
 }

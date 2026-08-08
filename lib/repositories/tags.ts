@@ -1,4 +1,5 @@
 import { query, queryOne, run } from '@/lib/db/client';
+import { taskTagEntityId } from '@/lib/sync/ids';
 import { enqueueOutbox } from '@/lib/sync/outbox';
 import type { Tag } from '@/lib/types';
 import { createId, nowIso } from '@/lib/utils/dates';
@@ -151,14 +152,28 @@ export const tagsRepo = {
   },
 
   delete(id: string): void {
+    const links = query<{ task_id: string }>(
+      'SELECT task_id FROM task_tags WHERE tag_id = ?',
+      [id],
+    );
+    const ts = nowIso();
     run('DELETE FROM task_tags WHERE tag_id = ?', [id]);
     run('DELETE FROM tags WHERE id = ?', [id]);
+    for (const link of links) {
+      void enqueueOutbox({
+        entity: 'task_tags',
+        entityId: taskTagEntityId(link.task_id, id),
+        op: 'delete',
+        payload: { taskId: link.task_id, tagId: id },
+        updatedAt: ts,
+      });
+    }
     void enqueueOutbox({
       entity: 'tags',
       entityId: id,
       op: 'delete',
       payload: {},
-      updatedAt: nowIso(),
+      updatedAt: ts,
     });
   },
 };

@@ -1,4 +1,5 @@
 import { query, queryOne, run, transaction } from '@/lib/db/client';
+import { taskTagEntityId } from '@/lib/sync/ids';
 import { enqueueOutbox } from '@/lib/sync/outbox';
 import type {
   QuickFilter,
@@ -106,6 +107,9 @@ function mapTask(row: TaskRow): Task {
   };
 }
 
+/** Deterministic Appwrite row id for a task↔tag link. */
+export { taskTagEntityId } from '@/lib/sync/ids';
+
 function taskPayload(task: Task): Record<string, unknown> {
   return {
     id: task.id,
@@ -121,8 +125,95 @@ function taskPayload(task: Task): Record<string, unknown> {
     createdAt: task.createdAt,
     updatedAt: task.updatedAt,
     completedAt: task.completedAt,
-    tagIds: task.tags.map((tag) => tag.id),
   };
+}
+
+function enqueueTaskTagUpsert(
+  taskId: string,
+  tagId: string,
+  updatedAt: string,
+): void {
+  void enqueueOutbox({
+    entity: 'task_tags',
+    entityId: taskTagEntityId(taskId, tagId),
+    op: 'upsert',
+    payload: { taskId, tagId },
+    updatedAt,
+  });
+}
+
+function enqueueTaskTagDelete(
+  taskId: string,
+  tagId: string,
+  updatedAt: string,
+): void {
+  void enqueueOutbox({
+    entity: 'task_tags',
+    entityId: taskTagEntityId(taskId, tagId),
+    op: 'delete',
+    payload: { taskId, tagId },
+    updatedAt,
+  });
+}
+
+function enqueueSubtaskUpsert(subtask: Subtask, updatedAt: string): void {
+  void enqueueOutbox({
+    entity: 'subtasks',
+    entityId: subtask.id,
+    op: 'upsert',
+    payload: {
+      id: subtask.id,
+      taskId: subtask.taskId,
+      title: subtask.title,
+      done: subtask.done,
+      position: subtask.position,
+    },
+    updatedAt,
+  });
+}
+
+function enqueueSubtaskDelete(id: string, updatedAt: string): void {
+  void enqueueOutbox({
+    entity: 'subtasks',
+    entityId: id,
+    op: 'delete',
+    payload: {},
+    updatedAt,
+  });
+}
+
+/** One-shot: push all local task_tags + subtasks (for data created before relation sync). */
+export async function enqueueAllLocalRelations(): Promise<void> {
+  const ts = nowIso();
+  const links = query<{ task_id: string; tag_id: string }>(
+    'SELECT task_id, tag_id FROM task_tags',
+  );
+  for (const link of links) {
+    await enqueueOutbox({
+      entity: 'task_tags',
+      entityId: taskTagEntityId(link.task_id, link.tag_id),
+      op: 'upsert',
+      payload: { taskId: link.task_id, tagId: link.tag_id },
+      updatedAt: ts,
+    });
+  }
+  const subs = query<SubtaskRow>('SELECT * FROM subtasks');
+  for (const row of subs) {
+    const subtask = mapSubtask(row);
+    await enqueueOutbox({
+      entity: 'subtasks',
+      entityId: subtask.id,
+      op: 'upsert',
+      payload: {
+        id: subtask.id,
+        taskId: subtask.taskId,
+        title: subtask.title,
+        done: subtask.done,
+        position: subtask.position,
+      },
+      updatedAt: ts,
+    });
+  }
 }
 
 function enqueueTaskUpsert(task: Task): void {
@@ -136,12 +227,27 @@ function enqueueTaskUpsert(task: Task): void {
 }
 
 function setTaskTags(taskId: string, tagIds: string[]): void {
+  const previous = query<{ tag_id: string }>(
+    'SELECT tag_id FROM task_tags WHERE task_id = ?',
+    [taskId],
+  ).map((row) => row.tag_id);
+  const next = [...new Set(tagIds)];
+  const nextSet = new Set(next);
+  const ts = nowIso();
+
   run('DELETE FROM task_tags WHERE task_id = ?', [taskId]);
-  for (const tagId of tagIds) {
+  for (const tagId of next) {
     run('INSERT INTO task_tags (task_id, tag_id) VALUES (?, ?)', [
       taskId,
       tagId,
     ]);
+  }
+
+  for (const tagId of previous) {
+    if (!nextSet.has(tagId)) enqueueTaskTagDelete(taskId, tagId, ts);
+  }
+  for (const tagId of next) {
+    enqueueTaskTagUpsert(taskId, tagId, ts);
   }
 }
 
@@ -149,13 +255,34 @@ function replaceSubtasks(
   taskId: string,
   items: Array<{ title: string; done?: boolean }>,
 ): void {
+  const previous = subtasksForTask(taskId);
+  const ts = nowIso();
+
   run('DELETE FROM subtasks WHERE task_id = ?', [taskId]);
+  for (const old of previous) {
+    enqueueSubtaskDelete(old.id, ts);
+  }
+
   items.forEach((item, index) => {
+    const subtask: Subtask = {
+      id: createId(),
+      taskId,
+      title: item.title,
+      done: Boolean(item.done),
+      position: index,
+    };
     run(
       `INSERT INTO subtasks (id, task_id, title, done, position)
        VALUES (?, ?, ?, ?, ?)`,
-      [createId(), taskId, item.title, item.done ? 1 : 0, index],
+      [
+        subtask.id,
+        subtask.taskId,
+        subtask.title,
+        subtask.done ? 1 : 0,
+        subtask.position,
+      ],
     );
+    enqueueSubtaskUpsert(subtask, ts);
   });
 }
 
@@ -318,13 +445,23 @@ export const tasksRepo = {
   },
 
   delete(id: string): void {
+    const existing = this.get(id);
+    const ts = nowIso();
+    if (existing) {
+      for (const tag of existing.tags) {
+        enqueueTaskTagDelete(id, tag.id, ts);
+      }
+      for (const sub of existing.subtasks) {
+        enqueueSubtaskDelete(sub.id, ts);
+      }
+    }
     run('DELETE FROM tasks WHERE id = ?', [id]);
     void enqueueOutbox({
       entity: 'tasks',
       entityId: id,
       op: 'delete',
       payload: {},
-      updatedAt: nowIso(),
+      updatedAt: ts,
     });
   },
 
@@ -375,6 +512,7 @@ export const subtasksRepo = {
        VALUES (?, ?, ?, ?, ?)`,
       [subtask.id, subtask.taskId, subtask.title, 0, subtask.position],
     );
+    enqueueSubtaskUpsert(subtask, nowIso());
     return subtask;
   },
 
@@ -385,10 +523,13 @@ export const subtasksRepo = {
     if (!row) return null;
     const done = row.done ? 0 : 1;
     run('UPDATE subtasks SET done = ? WHERE id = ?', [done, id]);
-    return mapSubtask({ ...row, done });
+    const subtask = mapSubtask({ ...row, done });
+    enqueueSubtaskUpsert(subtask, nowIso());
+    return subtask;
   },
 
   delete(id: string): void {
     run('DELETE FROM subtasks WHERE id = ?', [id]);
+    enqueueSubtaskDelete(id, nowIso());
   },
 };

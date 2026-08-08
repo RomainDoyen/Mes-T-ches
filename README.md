@@ -70,10 +70,12 @@ Voir `api/.dev.vars.example` pour le détail. Le namespace KV `SESSIONS` sera cr
 
 ### Setup Appwrite
 
-Provisionner le projet Appwrite Cloud (collections, auth, OAuth Google) : **[docs/superpowers/setup-appwrite.md](docs/superpowers/setup-appwrite.md)**.
+Auth Google + secrets : **[docs/superpowers/setup-appwrite.md](docs/superpowers/setup-appwrite.md)**.
 
-> **Google OAuth** : nécessite la configuration Google Cloud Console + Appwrite (voir le guide ci-dessus).  
-> **Sync** : `APPWRITE_API_KEY` est **obligatoire** côté Worker ; sans elle, pull/push ne fonctionne pas.
+DB / tables / colonnes : automatiques via `cd api && npm run provision` (ou CI). Deploy Worker : `npm run deploy` / `npm run deploy:full`, ou le workflow GitHub Actions.
+
+> **Google OAuth** : configuration Google Cloud Console + Appwrite (voir le guide).  
+> **Sync** : `APPWRITE_API_KEY` est **obligatoire** côté Worker.
 
 ### Chrome introuvable (`CHROME_PATH`)
 

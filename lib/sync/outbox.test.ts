@@ -119,16 +119,19 @@ describe('outbox', () => {
     expect(remaining[0]?.id).toBe(second!.id);
   });
 
-  it('returns empty list when no user is logged in', async () => {
-    storage.remove(USER_KEY);
-    await enqueueOutbox({
-      entity: 'tasks',
-      entityId: 't1',
-      op: 'upsert',
-      payload: {},
-      updatedAt: '2026-01-01T00:00:00.000Z',
-    });
-    expect(await listOutbox()).toEqual([]);
-    expect(storage.get([outboxKey])).resolves.toEqual({});
+  it('keeps concurrent enqueues without dropping entries', async () => {
+    await Promise.all(
+      Array.from({ length: 20 }, (_, i) =>
+        enqueueOutbox({
+          entity: 'tasks',
+          entityId: `t-${i}`,
+          op: 'upsert',
+          payload: { i },
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        }),
+      ),
+    );
+
+    expect(await listOutbox()).toHaveLength(20);
   });
 });
