@@ -102,3 +102,17 @@ export async function getAccount(env: Env, sessionSecret: string): Promise<Appwr
   const { data } = await call<AppwriteUser>(env, 'GET', '/account', undefined, sessionSecret);
   return data;
 }
+
+export async function createSessionFromToken(
+  env: Env,
+  params: { userId: string; secret: string },
+): Promise<{ secret: string }> {
+  const { data, headers } = await call<AppwriteSessionBody>(
+    env,
+    'POST',
+    '/account/sessions/token',
+    params,
+  );
+  const secret = extractSessionSecret(env, headers, data);
+  return { secret };
+}
