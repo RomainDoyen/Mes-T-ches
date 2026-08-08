@@ -46,6 +46,10 @@ export default defineConfig({
     name: 'Mes Tâches',
     description: EXTENSION_DESCRIPTION,
     permissions: ['storage'],
+    host_permissions: [
+      'http://127.0.0.1:8787/*',
+      'https://*.workers.dev/*',
+    ],
     icons: {
       16: 'icon/16.png',
       32: 'icon/32.png',
