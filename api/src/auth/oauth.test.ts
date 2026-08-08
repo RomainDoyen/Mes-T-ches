@@ -22,14 +22,16 @@ function mockKv() {
 describe('oauth', () => {
   const env = {
     APPWRITE_ENDPOINT: 'https://fra.cloud.appwrite.io/v1',
-    APP_ORIGIN: 'http://127.0.0.1:8787',
+    APPWRITE_PROJECT_ID: 'proj-123',
+    APP_ORIGIN: 'http://127.0.0.1:8787/',
     SESSIONS: mockKv(),
   } as any;
 
-  it('builds Google OAuth URL with success and failure redirects', () => {
+  it('builds Google OAuth URL with project + success/failure redirects', () => {
     const url = buildGoogleOAuthUrl(env);
     expect(url).toBe(
       'https://fra.cloud.appwrite.io/v1/account/tokens/oauth2/google?' +
+        'project=proj-123&' +
         'success=http%3A%2F%2F127.0.0.1%3A8787%2Fauth%2Fcallback&' +
         'failure=http%3A%2F%2F127.0.0.1%3A8787%2Fauth%2Fbridge%3Ferror%3D1',
     );

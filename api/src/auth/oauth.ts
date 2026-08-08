@@ -1,10 +1,20 @@
 import type { Env } from '../env';
 
+function appOrigin(env: Env): string {
+  return env.APP_ORIGIN.replace(/\/+$/, '');
+}
+
 export function buildGoogleOAuthUrl(env: Env): string {
-  const success = `${env.APP_ORIGIN}/auth/callback`;
-  const failure = `${env.APP_ORIGIN}/auth/bridge?error=1`;
+  const origin = appOrigin(env);
+  const success = `${origin}/auth/callback`;
+  const failure = `${origin}/auth/bridge?error=1`;
   const base = env.APPWRITE_ENDPOINT.replace(/\/$/, '');
-  const params = new URLSearchParams({ success, failure });
+  // `project` is required on browser redirects (no X-Appwrite-Project header).
+  const params = new URLSearchParams({
+    project: env.APPWRITE_PROJECT_ID,
+    success,
+    failure,
+  });
   return `${base}/account/tokens/oauth2/google?${params}`;
 }
 
