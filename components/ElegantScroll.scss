@@ -1,0 +1,85 @@
+.elegant-scroll {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.elegant-scroll__clip {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.elegant-scroll__viewport {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  box-sizing: border-box;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.elegant-scroll__viewport::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+  background: transparent !important;
+}
+
+.elegant-scroll__content {
+  min-height: min-content;
+  box-sizing: border-box;
+}
+
+.elegant-scroll__track {
+  position: absolute;
+  top: 4px;
+  right: 3px;
+  bottom: 4px;
+  width: 6px;
+  z-index: 5;
+  border-radius: 999px;
+  background: transparent;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.elegant-scroll__track.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+  background: color-mix(in srgb, var(--text-muted) 12%, transparent);
+}
+
+.elegant-scroll:hover .elegant-scroll__track.is-visible,
+.elegant-scroll__track.is-visible:hover {
+  background: color-mix(in srgb, var(--text-muted) 18%, transparent);
+}
+
+.elegant-scroll__thumb {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: grab;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
+  transition: background 0.15s ease;
+}
+
+.elegant-scroll__thumb:hover,
+.elegant-scroll__thumb:active {
+  background: color-mix(in srgb, var(--accent) 85%, transparent);
+  cursor: grabbing;
+}

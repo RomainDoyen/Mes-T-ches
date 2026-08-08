@@ -1,0 +1,144 @@
+.profiles-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 35;
+  background: rgba(11, 18, 32, 0.42);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.profiles {
+  width: 100%;
+  max-width: 320px;
+  border-radius: 18px;
+  background: var(--card-solid);
+  padding: 16px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.profiles__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.profiles__title {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.profiles__close {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+}
+
+.profiles__close:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.profiles__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.profiles__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg) 65%, transparent);
+  border: 1px solid transparent;
+}
+
+.profiles__item.is-active {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: var(--accent-soft);
+}
+
+.profiles__select {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  text-align: left;
+  padding: 8px 8px;
+  border-radius: 10px;
+  min-width: 0;
+}
+
+.profiles__dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.profiles__name {
+  flex: 1;
+  font-weight: 650;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profiles__delete {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+}
+
+.profiles__delete:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.profiles__form {
+  display: flex;
+  gap: 8px;
+}
+
+.profiles__form input {
+  flex: 1;
+  border: 1px solid var(--border);
+  outline: none;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.profiles__form input:focus {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.profiles__add {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
