@@ -12,7 +12,8 @@
   "type": "commonjs",
   "dependencies": {
     "hono": "^4.13.1",
-    "node-appwrite": "^27.1.0"
+    "node-appwrite": "^27.1.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260808.1",
