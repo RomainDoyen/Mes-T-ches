@@ -5,5 +5,5 @@ compatibility_flags = ["nodejs_compat"]
 
 [[kv_namespaces]]
 binding = "SESSIONS"
-id = "REPLACE_AFTER_CREATE"
-preview_id = "REPLACE_AFTER_CREATE"
+id = "47860a22fa48497781dfaf551270693f"
+preview_id = "81ac3d633de0493b80a12fd45f915dd3"

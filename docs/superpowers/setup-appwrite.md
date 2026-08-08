@@ -23,9 +23,11 @@ Guide manuel pour provisionner le projet Appwrite Cloud avant le déploiement du
   - **Success URL** : `$APP_ORIGIN/auth/callback`  
     (remplacer `$APP_ORIGIN` par l’URL publique du Worker, ex. `https://mes-taches-api.<sub>.workers.dev/auth/callback`)
 
-- [ ] **4. Créer la database `mes_taches`**
+- [ ] **4. Créer la database**
   - **Databases** → **Create database**
-  - **Database ID** : `mes_taches` (identique à `DATABASE_ID` dans `api/src/sync/collections.ts`)
+  - Le **name** peut être `mes_taches` ; l’**ID** Appwrite est ce que le Worker utilise.
+  - ID actuel en prod : `6a77520c003a48bce2e4` (voir `DATABASE_ID` dans `api/src/sync/collections.ts`).
+  - Si tu recrées la DB, mets un ID custom ou mets à jour `DATABASE_ID` dans le code puis redeploy.
 
 - [ ] **5. Créer les collections**
   - Créer une collection par ligne (IDs identiques aux clés de `COLLECTIONS`) :
