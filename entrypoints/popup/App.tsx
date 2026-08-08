@@ -1,8 +1,9 @@
-import { AlertCircle, Database, Plus, RefreshCw } from 'lucide-react';
+import { AlertCircle, Database, Loader2, Plus, RefreshCw } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
 import { ElegantScroll } from '@/components/ElegantScroll';
 import { Header } from '@/components/Header';
+import { LoginScreen } from '@/components/LoginScreen';
 import { ProfileSwitcher } from '@/components/ProfileSwitcher';
 import { SearchFilters } from '@/components/SearchFilters';
 import { Settings } from '@/components/Settings';
@@ -11,6 +12,7 @@ import { TaskDrawer } from '@/components/TaskDrawer';
 import { TaskList } from '@/components/TaskList';
 import { initDb, isDbReady } from '@/lib/db/client';
 import { tasksRepo } from '@/lib/repositories/tasks';
+import { useAuthStore } from '@/stores/authStore';
 import { useProfileStore } from '@/stores/profileStore';
 import { useTaskStore } from '@/stores/taskStore';
 import { useThemeStore } from '@/stores/themeStore';
@@ -20,6 +22,12 @@ type BootState = 'loading' | 'ready' | 'error';
 export default function App() {
   const theme = useThemeStore((s) => s.theme);
   const toggleTheme = useThemeStore((s) => s.toggleTheme);
+
+  const {
+    hydrated: authHydrated,
+    token,
+    hydrate: hydrateAuth,
+  } = useAuthStore();
 
   const {
     profiles,
@@ -91,8 +99,13 @@ export default function App() {
   }
 
   useEffect(() => {
+    void hydrateAuth();
+  }, [hydrateAuth]);
+
+  useEffect(() => {
+    if (!authHydrated || !token) return;
     void bootApp();
-  }, []);
+  }, [authHydrated, token]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -135,6 +148,27 @@ export default function App() {
         : tasks.filter((t) => t.status === 'todo').length,
     [activeProfileId, tasks],
   );
+
+  if (!authHydrated) {
+    return (
+      <div className="popup-shell" data-theme={theme}>
+        <div className="boot">
+          <div className="boot__icon">
+            <Loader2 size={26} strokeWidth={2} className="login__spinner" />
+          </div>
+          <p className="boot__text">Chargement…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!token) {
+    return (
+      <div className="popup-shell" data-theme={theme}>
+        <LoginScreen />
+      </div>
+    );
+  }
 
   if (boot === 'loading') {
     return (
