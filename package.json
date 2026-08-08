@@ -1,6 +1,6 @@
 {
   "name": "todo-extension",
-  "description": "Organisez vos tâches en local : priorités, tags, catégories, sous-tâches et multi-profils. Données sur votre appareil, sans cloud.",
+  "description": "Organisez vos tâches : priorités, tags, catégories, sous-tâches et multi-profils. Données locales avec sync cloud via compte (email / Google).",
   "private": true,
   "version": "1.0.0",
   "type": "module",
