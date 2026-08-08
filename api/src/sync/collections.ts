@@ -1,5 +1,5 @@
 /** Appwrite database ID (not the display name). */
-export const DATABASE_ID = '6a77520c003a48bce2e4';
+export const DATABASE_ID = '6a77520c003a40bce2e4';
 
 export const COLLECTIONS = {
   profiles: 'profiles',

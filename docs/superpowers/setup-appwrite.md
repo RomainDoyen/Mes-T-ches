@@ -26,7 +26,7 @@ Guide manuel pour provisionner le projet Appwrite Cloud avant le déploiement du
 - [ ] **4. Créer la database**
   - **Databases** → **Create database**
   - Le **name** peut être `mes_taches` ; l’**ID** Appwrite est ce que le Worker utilise.
-  - ID actuel en prod : `6a77520c003a48bce2e4` (voir `DATABASE_ID` dans `api/src/sync/collections.ts`).
+  - ID actuel en prod : `6a77520c003a40bce2e4` (voir `DATABASE_ID` dans `api/src/sync/collections.ts`).
   - Si tu recrées la DB, mets un ID custom ou mets à jour `DATABASE_ID` dans le code puis redeploy.
 
 - [ ] **5. Créer les collections**

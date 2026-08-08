@@ -6,6 +6,11 @@ type ListDocumentsResponse = {
   documents: Record<string, unknown>[];
 };
 
+type ListRowsResponse = {
+  total: number;
+  rows: Record<string, unknown>[];
+};
+
 function endpoint(env: Env) {
   return env.APPWRITE_ENDPOINT.replace(/\/$/, '');
 }
@@ -19,7 +24,6 @@ async function adminCall<T>(
   const headers: Record<string, string> = {
     'X-Appwrite-Project': env.APPWRITE_PROJECT_ID,
     'X-Appwrite-Key': env.APPWRITE_API_KEY,
-    'X-Appwrite-Response-Format': '1.9.5',
     accept: 'application/json',
   };
   if (body) headers['content-type'] = 'application/json';
@@ -52,6 +56,12 @@ async function adminCall<T>(
   return (data ?? {}) as T;
 }
 
+/** TablesDB paths — Appwrite Cloud console uses tables/rows (not collections/documents). */
+function tableRowsPath(databaseId: string, tableId: string, rowId?: string) {
+  const base = `/tablesdb/${databaseId}/tables/${tableId}/rows`;
+  return rowId ? `${base}/${rowId}` : base;
+}
+
 export async function listDocuments(
   env: Env,
   databaseId: string,
@@ -61,8 +71,12 @@ export async function listDocuments(
   const params = new URLSearchParams();
   for (const q of queries) params.append('queries[]', q);
   const qs = params.toString();
-  const path = `/databases/${databaseId}/collections/${collectionId}/documents${qs ? `?${qs}` : ''}`;
-  return adminCall<ListDocumentsResponse>(env, 'GET', path);
+  const path = `${tableRowsPath(databaseId, collectionId)}${qs ? `?${qs}` : ''}`;
+  const result = await adminCall<ListRowsResponse>(env, 'GET', path);
+  return {
+    total: result.total ?? 0,
+    documents: result.rows ?? [],
+  };
 }
 
 export async function getDocument(
@@ -75,7 +89,7 @@ export async function getDocument(
     return await adminCall<Record<string, unknown>>(
       env,
       'GET',
-      `/databases/${databaseId}/collections/${collectionId}/documents/${documentId}`,
+      tableRowsPath(databaseId, collectionId, documentId),
     );
   } catch (e) {
     if (e instanceof AppwriteException && e.code === 404) return null;
@@ -93,8 +107,8 @@ export async function createDocument(
   return adminCall<Record<string, unknown>>(
     env,
     'POST',
-    `/databases/${databaseId}/collections/${collectionId}/documents`,
-    { documentId, data },
+    tableRowsPath(databaseId, collectionId),
+    { rowId: documentId, data },
   );
 }
 
@@ -108,7 +122,14 @@ export async function updateDocument(
   return adminCall<Record<string, unknown>>(
     env,
     'PATCH',
-    `/databases/${databaseId}/collections/${collectionId}/documents/${documentId}`,
+    tableRowsPath(databaseId, collectionId, documentId),
     { data },
   );
+}
+
+/** Diagnostic: list databases via TablesDB. */
+export async function listTablesDatabases(
+  env: Env,
+): Promise<{ total: number; databases: Array<{ $id: string; name?: string }> }> {
+  return adminCall(env, 'GET', '/tablesdb');
 }

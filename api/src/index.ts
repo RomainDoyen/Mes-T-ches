@@ -21,6 +21,26 @@ app.use('*', async (c, next) => {
 });
 
 app.get('/health', (c) => c.json({ ok: true, databaseId: DATABASE_ID }));
+
+app.get('/debug/databases', async (c) => {
+  try {
+    const { listTablesDatabases } = await import('./appwrite/databases');
+    const listed = await listTablesDatabases(c.env);
+    return c.json({
+      configuredDatabaseId: DATABASE_ID,
+      listed,
+    });
+  } catch (e) {
+    return c.json(
+      {
+        configuredDatabaseId: DATABASE_ID,
+        error: e instanceof Error ? e.message : String(e),
+      },
+      500,
+    );
+  }
+});
+
 app.route('/auth', authRoutes);
 app.route('/sync', syncRoutes);
 
