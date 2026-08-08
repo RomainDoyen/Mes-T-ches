@@ -24,3 +24,12 @@ web-ext.config.ts
 *.njsproj
 *.sln
 *.sw?
+
+# API Worker
+api/node_modules/
+api/.wrangler/
+api/.dev.vars
+
+# Scratch
+.superpowers/
+.tmp-chrome-profile*/
