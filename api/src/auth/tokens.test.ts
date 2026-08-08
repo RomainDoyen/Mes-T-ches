@@ -31,4 +31,11 @@ describe('tokens', () => {
     await revokeBearer(env, token);
     expect(await resolveBearer(env, token)).toBeNull();
   });
+
+  it('returns null when KV value is corrupted JSON', async () => {
+    const kv = mockKv();
+    const env = { SESSIONS: kv, SESSION_SECRET: 'test-secret' } as any;
+    await kv.put('bearer:bad-token', '{not valid json');
+    expect(await resolveBearer(env, 'bad-token')).toBeNull();
+  });
 });

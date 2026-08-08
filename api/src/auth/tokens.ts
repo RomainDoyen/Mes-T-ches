@@ -17,7 +17,11 @@ export async function resolveBearer(
 ): Promise<{ userId: string; appwriteSession: string } | null> {
   const raw = await env.SESSIONS.get(`bearer:${token}`);
   if (!raw) return null;
-  return JSON.parse(raw);
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
 }
 
 export async function revokeBearer(
