@@ -1,7 +1,9 @@
 import { getApiBase } from '@/lib/sync/client';
+import { drainSync } from '@/stores/syncStore';
 
 const TOKEN_KEY = 'auth:token';
 const USER_KEY = 'auth:user';
+const SYNC_ALARM = 'sync';
 
 type AuthUser = { id: string; email: string; name: string };
 type AuthResponse = { token: string; user: AuthUser };
@@ -10,6 +12,21 @@ export default defineBackground(() => {
   const base = getApiBase();
   const bridgePrefix = `${base}/auth/bridge`;
   const handledCodes = new Set<string>();
+
+  chrome.alarms.create(SYNC_ALARM, { periodInMinutes: 0.5 });
+
+  chrome.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name !== SYNC_ALARM) return;
+    void drainSync().catch((error) => {
+      console.error('[sync] alarm drain failed', error);
+    });
+  });
+
+  chrome.runtime.onStartup.addListener(() => {
+    void drainSync().catch((error) => {
+      console.error('[sync] startup drain failed', error);
+    });
+  });
 
   chrome.tabs.onUpdated.addListener(async (tabId, info, tab) => {
     if (info.status !== 'complete' || !tab.url?.startsWith(bridgePrefix)) return;

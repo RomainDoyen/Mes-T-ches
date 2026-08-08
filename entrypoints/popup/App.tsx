@@ -14,6 +14,7 @@ import { initDb, isDbReady } from '@/lib/db/client';
 import { tasksRepo } from '@/lib/repositories/tasks';
 import { useAuthStore } from '@/stores/authStore';
 import { useProfileStore } from '@/stores/profileStore';
+import { useSyncStore } from '@/stores/syncStore';
 import { useTaskStore } from '@/stores/taskStore';
 import { useThemeStore } from '@/stores/themeStore';
 
@@ -90,6 +91,11 @@ export default function App() {
       }
       if (!isDbReady()) {
         await initDb(user.id);
+      }
+      try {
+        await useSyncStore.getState().syncNow();
+      } catch {
+        // sync offline/erreur — données locales toujours utilisables
       }
       await hydrate();
       setBoot('ready');

@@ -1,5 +1,6 @@
 import { query, queryOne, run, transaction } from '@/lib/db/client';
 import { enqueueOutbox } from '@/lib/sync/outbox';
+import type { Profile } from '@/lib/types';
 import { createId, nowIso } from '@/lib/utils/dates';
 
 interface ProfileRow {
