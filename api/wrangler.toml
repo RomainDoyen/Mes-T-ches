@@ -1,6 +1,7 @@
 name = "mes-taches-api"
 main = "src/index.ts"
 compatibility_date = "2026-08-01"
+compatibility_flags = ["nodejs_compat"]
 
 [[kv_namespaces]]
 binding = "SESSIONS"
