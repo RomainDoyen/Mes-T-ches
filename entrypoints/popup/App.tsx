@@ -103,6 +103,23 @@ export default function App() {
   }, [hydrateAuth]);
 
   useEffect(() => {
+    function onOAuthMessage(message: unknown): void {
+      if (
+        typeof message !== 'object' ||
+        message === null ||
+        !('type' in message) ||
+        message.type !== 'oauth-code'
+      ) {
+        return;
+      }
+      void hydrateAuth();
+    }
+
+    chrome.runtime.onMessage.addListener(onOAuthMessage);
+    return () => chrome.runtime.onMessage.removeListener(onOAuthMessage);
+  }, [hydrateAuth]);
+
+  useEffect(() => {
     if (!authHydrated || !token) return;
     void bootApp();
   }, [authHydrated, token]);

@@ -45,7 +45,7 @@ export default defineConfig({
   manifest: {
     name: 'Mes Tâches',
     description: EXTENSION_DESCRIPTION,
-    permissions: ['storage'],
+    permissions: ['storage', 'tabs'],
     host_permissions: [
       'http://127.0.0.1:8787/*',
       'https://*.workers.dev/*',
