@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { resetDbConnection } from '@/lib/db/client';
 import { apiFetch, getApiBase } from '@/lib/sync/client';
 
 const TOKEN_KEY = 'auth:token';
@@ -90,6 +91,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // ignore network errors on logout
       }
     }
+    resetDbConnection();
     await clearStoredAuth();
     set({ token: null, user: null });
   },

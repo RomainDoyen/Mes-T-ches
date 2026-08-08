@@ -5,7 +5,6 @@ import sqlite3InitModule, {
 } from '@sqlite.org/sqlite-wasm';
 import { MIGRATION_V1, SCHEMA_VERSION } from './schema';
 
-const IDB_NAME = 'todo-extension-db';
 const IDB_STORE = 'sqlite';
 const IDB_KEY = 'main';
 
@@ -13,12 +12,20 @@ export type DbRow = Record<string, SqlValue | unknown>;
 
 let sqlite3: Sqlite3Static | null = null;
 let db: Database | null = null;
+let currentUserId: string | null = null;
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
 let persistEnabled = true;
 
+function getIdbName(): string {
+  if (!currentUserId) {
+    throw new Error('IndexedDB user not set. Call initDb(userId) first.');
+  }
+  return `todo-extension-db:${currentUserId}`;
+}
+
 function openIdb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(IDB_NAME, 1);
+    const req = indexedDB.open(getIdbName(), 1);
     req.onupgradeneeded = () => {
       const database = req.result;
       if (!database.objectStoreNames.contains(IDB_STORE)) {
@@ -99,11 +106,32 @@ export async function flushPersist(): Promise<void> {
   await saveBytes(bytes);
 }
 
-export async function initDb(options?: {
-  memoryOnly?: boolean;
-}): Promise<void> {
-  if (db) return;
+export function resetDbConnection(): void {
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
+  if (db) {
+    db.close();
+    db = null;
+  }
+  sqlite3 = null;
+  currentUserId = null;
+}
 
+export async function initDb(
+  userId: string,
+  options?: { memoryOnly?: boolean },
+): Promise<void> {
+  if (!userId.trim()) {
+    throw new Error('initDb requires a userId');
+  }
+  if (db && currentUserId === userId) return;
+  if (db && currentUserId !== userId) {
+    resetDbConnection();
+  }
+
+  currentUserId = userId;
   persistEnabled = !options?.memoryOnly;
   sqlite3 = await sqlite3InitModule();
 
@@ -135,13 +163,8 @@ export async function initDb(options?: {
 }
 
 export async function resetDbForTests(): Promise<void> {
-  if (db) {
-    db.close();
-    db = null;
-  }
-  sqlite3 = null;
-  persistEnabled = false;
-  await initDb({ memoryOnly: true });
+  resetDbConnection();
+  await initDb('test', { memoryOnly: true });
 }
 
 export function query<T = DbRow>(

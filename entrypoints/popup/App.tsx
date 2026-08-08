@@ -26,6 +26,7 @@ export default function App() {
   const {
     hydrated: authHydrated,
     token,
+    user,
     hydrate: hydrateAuth,
   } = useAuthStore();
 
@@ -84,8 +85,11 @@ export default function App() {
     setBoot('loading');
     setErrorMessage(null);
     try {
+      if (!user?.id) {
+        throw new Error('Utilisateur non authentifié');
+      }
       if (!isDbReady()) {
-        await initDb();
+        await initDb(user.id);
       }
       await hydrate();
       setBoot('ready');
@@ -120,9 +124,9 @@ export default function App() {
   }, [hydrateAuth]);
 
   useEffect(() => {
-    if (!authHydrated || !token) return;
+    if (!authHydrated || !token || !user?.id) return;
     void bootApp();
-  }, [authHydrated, token]);
+  }, [authHydrated, token, user?.id]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
