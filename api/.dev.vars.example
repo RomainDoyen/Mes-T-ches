@@ -1,0 +1,6 @@
+APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
+APPWRITE_PROJECT_ID=
+APPWRITE_API_KEY=
+SESSION_SECRET=change-me-long-random
+EXTENSION_ID=
+APP_ORIGIN=http://127.0.0.1:8787

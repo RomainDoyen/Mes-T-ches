@@ -1,0 +1,8 @@
+name = "mes-taches-api"
+main = "src/index.ts"
+compatibility_date = "2026-08-01"
+
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "REPLACE_AFTER_CREATE"
+preview_id = "REPLACE_AFTER_CREATE"
