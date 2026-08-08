@@ -1,9 +1,61 @@
 import { describe, expect, it } from 'vitest';
+import { payloadToAppwrite } from './payload';
 import {
   isCloudWinner,
   pushBodySchema,
   toCloudDoc,
 } from './schema';
+
+describe('payloadToAppwrite', () => {
+  it('maps camelCase profile fields and drops id', () => {
+    expect(
+      payloadToAppwrite('profiles', {
+        id: 'p1',
+        name: 'Perso',
+        color: '#0F766E',
+        createdAt: '2026-01-01T00:00:00.000Z',
+      }),
+    ).toEqual({
+      name: 'Perso',
+      color: '#0F766E',
+      created_at: '2026-01-01T00:00:00.000Z',
+    });
+  });
+
+  it('maps task fields and drops tagIds', () => {
+    expect(
+      payloadToAppwrite('tasks', {
+        id: 't1',
+        profileId: 'p1',
+        title: 'Hello',
+        description: null,
+        status: 'todo',
+        priority: 'medium',
+        dueAt: null,
+        categoryId: null,
+        pinned: true,
+        position: 1,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+        completedAt: null,
+        tagIds: ['a', 'b'],
+      }),
+    ).toEqual({
+      profile_id: 'p1',
+      title: 'Hello',
+      description: null,
+      status: 'todo',
+      priority: 'medium',
+      due_at: null,
+      category_id: null,
+      pinned: 1,
+      position: 1,
+      created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-02T00:00:00.000Z',
+      completed_at: null,
+    });
+  });
+});
 
 describe('isCloudWinner', () => {
   it('returns true when cloud is strictly newer', () => {

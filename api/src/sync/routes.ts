@@ -9,6 +9,7 @@ import {
 import { requireAuth, type AuthVars } from '../auth/middleware';
 import type { Env } from '../env';
 import { COLLECTIONS, DATABASE_ID, type CollectionKey } from './collections';
+import { existingToAppwrite, payloadToAppwrite } from './payload';
 import {
   emptyDocumentsRecord,
   isCloudWinner,
@@ -122,7 +123,9 @@ syncRoutes.post('/push', requireAuth, async (c) => {
       }
 
       if (mutation.op === 'delete') {
-        const base = existing ? stripAppwriteMeta(existing) : { ...mutation.payload };
+        const base = existing
+          ? existingToAppwrite(mutation.collection, stripAppwriteMeta(existing))
+          : payloadToAppwrite(mutation.collection, mutation.payload);
         const data = {
           ...base,
           userId,
@@ -136,7 +139,7 @@ syncRoutes.post('/push', requireAuth, async (c) => {
         }
       } else {
         const data = {
-          ...mutation.payload,
+          ...payloadToAppwrite(mutation.collection, mutation.payload),
           userId,
           updatedAt: mutation.updatedAt,
           deletedAt: null,
