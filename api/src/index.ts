@@ -41,6 +41,25 @@ app.get('/debug/databases', async (c) => {
   }
 });
 
+app.get('/debug/schema', async (c) => {
+  try {
+    const { inspectSchema } = await import('./sync/provision');
+    return c.json(await inspectSchema(c.env));
+  } catch (e) {
+    return c.json({ error: e instanceof Error ? e.message : String(e) }, 500);
+  }
+});
+
+app.post('/debug/provision-schema', async (c) => {
+  try {
+    const table = c.req.query('table') ?? undefined;
+    const { provisionSchema } = await import('./sync/provision');
+    return c.json(await provisionSchema(c.env, table));
+  } catch (e) {
+    return c.json({ error: e instanceof Error ? e.message : String(e) }, 500);
+  }
+});
+
 app.route('/auth', authRoutes);
 app.route('/sync', syncRoutes);
 
