@@ -1,4 +1,5 @@
 import { query, queryOne, run } from '@/lib/db/client';
+import { enqueueOutbox } from '@/lib/sync/outbox';
 import type { Category } from '@/lib/types';
 import { createId, nowIso } from '@/lib/utils/dates';
 
@@ -61,11 +62,32 @@ export const categoriesRepo = {
         category.createdAt,
       ],
     );
+    void enqueueOutbox({
+      entity: 'categories',
+      entityId: category.id,
+      op: 'upsert',
+      payload: {
+        id: category.id,
+        profileId: category.profileId,
+        name: category.name,
+        color: category.color,
+        emoji: category.emoji,
+        createdAt: category.createdAt,
+      },
+      updatedAt: category.createdAt,
+    });
     return category;
   },
 
   delete(id: string): void {
     run('DELETE FROM categories WHERE id = ?', [id]);
+    void enqueueOutbox({
+      entity: 'categories',
+      entityId: id,
+      op: 'delete',
+      payload: {},
+      updatedAt: nowIso(),
+    });
   },
 
   seedDefaults(profileId: string): void {

@@ -1,5 +1,5 @@
 import { query, queryOne, run, transaction } from '@/lib/db/client';
-import type { Profile } from '@/lib/types';
+import { enqueueOutbox } from '@/lib/sync/outbox';
 import { createId, nowIso } from '@/lib/utils/dates';
 
 interface ProfileRow {
@@ -43,6 +43,18 @@ export const profilesRepo = {
       'INSERT INTO profiles (id, name, color, created_at) VALUES (?, ?, ?, ?)',
       [profile.id, profile.name, profile.color, profile.createdAt],
     );
+    void enqueueOutbox({
+      entity: 'profiles',
+      entityId: profile.id,
+      op: 'upsert',
+      payload: {
+        id: profile.id,
+        name: profile.name,
+        color: profile.color,
+        createdAt: profile.createdAt,
+      },
+      updatedAt: profile.createdAt,
+    });
     return profile;
   },
 
@@ -59,6 +71,19 @@ export const profilesRepo = {
       next.color,
       id,
     ]);
+    const updatedAt = nowIso();
+    void enqueueOutbox({
+      entity: 'profiles',
+      entityId: id,
+      op: 'upsert',
+      payload: {
+        id: next.id,
+        name: next.name,
+        color: next.color,
+        createdAt: next.createdAt,
+      },
+      updatedAt,
+    });
     return next;
   },
 
@@ -68,6 +93,13 @@ export const profilesRepo = {
       throw new Error('Impossible de supprimer le dernier profil');
     }
     run('DELETE FROM profiles WHERE id = ?', [id]);
+    void enqueueOutbox({
+      entity: 'profiles',
+      entityId: id,
+      op: 'delete',
+      payload: {},
+      updatedAt: nowIso(),
+    });
   },
 
   ensureDefault(): Profile {

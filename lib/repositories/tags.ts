@@ -1,4 +1,5 @@
 import { query, queryOne, run } from '@/lib/db/client';
+import { enqueueOutbox } from '@/lib/sync/outbox';
 import type { Tag } from '@/lib/types';
 import { createId, nowIso } from '@/lib/utils/dates';
 
@@ -67,6 +68,19 @@ export const tagsRepo = {
        VALUES (?, ?, ?, ?, ?)`,
       [tag.id, tag.profileId, tag.name, tag.color, tag.createdAt],
     );
+    void enqueueOutbox({
+      entity: 'tags',
+      entityId: tag.id,
+      op: 'upsert',
+      payload: {
+        id: tag.id,
+        profileId: tag.profileId,
+        name: tag.name,
+        color: tag.color,
+        createdAt: tag.createdAt,
+      },
+      updatedAt: tag.createdAt,
+    });
     return tag;
   },
 
@@ -111,6 +125,20 @@ export const tagsRepo = {
       next.color,
       id,
     ]);
+    const updatedAt = nowIso();
+    void enqueueOutbox({
+      entity: 'tags',
+      entityId: id,
+      op: 'upsert',
+      payload: {
+        id: next.id,
+        profileId: next.profileId,
+        name: next.name,
+        color: next.color,
+        createdAt: next.createdAt,
+      },
+      updatedAt,
+    });
     return next;
   },
 
@@ -125,5 +153,12 @@ export const tagsRepo = {
   delete(id: string): void {
     run('DELETE FROM task_tags WHERE tag_id = ?', [id]);
     run('DELETE FROM tags WHERE id = ?', [id]);
+    void enqueueOutbox({
+      entity: 'tags',
+      entityId: id,
+      op: 'delete',
+      payload: {},
+      updatedAt: nowIso(),
+    });
   },
 };

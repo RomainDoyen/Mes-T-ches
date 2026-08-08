@@ -1,4 +1,5 @@
 import { query, queryOne, run, transaction } from '@/lib/db/client';
+import { enqueueOutbox } from '@/lib/sync/outbox';
 import type {
   QuickFilter,
   Subtask,
@@ -103,6 +104,35 @@ function mapTask(row: TaskRow): Task {
     tags: tagsForTask(row.id),
     subtasks: subtasksForTask(row.id),
   };
+}
+
+function taskPayload(task: Task): Record<string, unknown> {
+  return {
+    id: task.id,
+    profileId: task.profileId,
+    title: task.title,
+    description: task.description,
+    status: task.status,
+    priority: task.priority,
+    dueAt: task.dueAt,
+    categoryId: task.categoryId,
+    pinned: task.pinned,
+    position: task.position,
+    createdAt: task.createdAt,
+    updatedAt: task.updatedAt,
+    completedAt: task.completedAt,
+    tagIds: task.tags.map((tag) => tag.id),
+  };
+}
+
+function enqueueTaskUpsert(task: Task): void {
+  void enqueueOutbox({
+    entity: 'tasks',
+    entityId: task.id,
+    op: 'upsert',
+    payload: taskPayload(task),
+    updatedAt: task.updatedAt,
+  });
 }
 
 function setTaskTags(taskId: string, tagIds: string[]): void {
@@ -218,7 +248,9 @@ export const tasksRepo = {
       }
     });
 
-    return this.get(id)!;
+    const task = this.get(id)!;
+    enqueueTaskUpsert(task);
+    return task;
   },
 
   update(id: string, input: Partial<TaskInput> & { status?: TaskStatus }): Task | null {
@@ -266,7 +298,9 @@ export const tasksRepo = {
       if (input.subtasks) replaceSubtasks(id, input.subtasks);
     });
 
-    return this.get(id);
+    const task = this.get(id);
+    if (task) enqueueTaskUpsert(task);
+    return task;
   },
 
   toggleDone(id: string): Task | null {
@@ -285,6 +319,13 @@ export const tasksRepo = {
 
   delete(id: string): void {
     run('DELETE FROM tasks WHERE id = ?', [id]);
+    void enqueueOutbox({
+      entity: 'tasks',
+      entityId: id,
+      op: 'delete',
+      payload: {},
+      updatedAt: nowIso(),
+    });
   },
 
   countActive(profileId: string): number {
