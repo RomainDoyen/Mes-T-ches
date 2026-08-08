@@ -1,20 +1,42 @@
 import {
+  Cloud,
   Download,
+  LogOut,
   Moon,
+  RefreshCw,
   Settings2,
   Sun,
   Tag,
   Upload,
+  User,
   X,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ElegantScroll } from '@/components/ElegantScroll';
 import { TagManager } from '@/components/TagManager';
 import { backupRepo } from '@/lib/repositories/backup';
 import type { Tag as TagType } from '@/lib/types';
+import { useAuthStore } from '@/stores/authStore';
+import { useSyncStore } from '@/stores/syncStore';
+import type { SyncStatus } from '@/lib/sync/types';
 import type { ThemeMode } from '@/stores/themeStore';
 import './Settings.scss';
+
+const SYNC_LABELS: Record<SyncStatus, string> = {
+  synced: 'Synchronisé',
+  pending: 'En attente',
+  offline: 'Hors ligne',
+  error: 'Erreur',
+};
+
+function formatLastSync(iso: string | null): string {
+  if (!iso) return 'Jamais';
+  return new Intl.DateTimeFormat('fr-FR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(new Date(iso));
+}
 
 interface SettingsProps {
   open: boolean;
@@ -45,6 +67,15 @@ export function Settings({
   onUpdateTag,
   onDeleteTag,
 }: SettingsProps) {
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+  const { lastSyncAt, lastError, status, syncNow, refreshStatus } = useSyncStore();
+  const [syncing, setSyncing] = useState(false);
+
+  useEffect(() => {
+    if (open) void refreshStatus();
+  }, [open, refreshStatus]);
+
   const usageById = useMemo(() => {
     const map: Record<string, number> = {};
     for (const tag of tags) {
@@ -120,6 +151,27 @@ export function Settings({
     }
   }
 
+  async function handleSyncNow() {
+    setSyncing(true);
+    try {
+      await syncNow();
+      onToast('Synchronisation réussie');
+    } catch {
+      onToast('Échec de la synchronisation');
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  async function handleLogout() {
+    await logout();
+    useSyncStore.setState({
+      status: 'synced',
+      lastSyncAt: null,
+      lastError: null,
+    });
+  }
+
   return (
     <AnimatePresence>
       {open && (
@@ -145,6 +197,49 @@ export function Settings({
             </div>
 
             <ElegantScroll className="settings__scroll">
+            <div className="settings__section">
+              <span className="settings__section-title">
+                <User size={13} strokeWidth={2.3} />
+                Compte
+              </span>
+              <div className="settings__account">
+                <span className="settings__email">{user?.email ?? '—'}</span>
+                <div className="settings__sync-meta">
+                  <span className={`settings__sync-status settings__sync-status--${status}`}>
+                    <Cloud size={12} strokeWidth={2.3} />
+                    {SYNC_LABELS[status]}
+                  </span>
+                  <span className="settings__sync-time">
+                    Dernière sync : {formatLastSync(lastSyncAt)}
+                  </span>
+                </div>
+                {lastError && status === 'error' && (
+                  <p className="settings__sync-error">{lastError}</p>
+                )}
+              </div>
+              <button
+                type="button"
+                className="pill-btn settings__btn accent-fill"
+                onClick={() => void handleSyncNow()}
+                disabled={syncing}
+              >
+                <RefreshCw
+                  size={15}
+                  strokeWidth={2.3}
+                  className={syncing ? 'settings__spin' : undefined}
+                />
+                {syncing ? 'Synchronisation…' : 'Synchroniser maintenant'}
+              </button>
+              <button
+                type="button"
+                className="pill-btn settings__btn settings__btn--ghost"
+                onClick={() => void handleLogout()}
+              >
+                <LogOut size={15} strokeWidth={2.3} />
+                Déconnexion
+              </button>
+            </div>
+
             <div className="settings__section">
               <span className="settings__section-title">
                 <Settings2 size={13} strokeWidth={2.3} />

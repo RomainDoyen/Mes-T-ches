@@ -137,6 +137,77 @@
   color: var(--text-muted);
 }
 
+.settings__btn--ghost:hover {
+  background: var(--danger-soft);
+  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+  color: var(--danger);
+}
+
+.settings__account {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings__email {
+  font-size: 13px;
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.settings__sync-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings__sync-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.settings__sync-status--synced {
+  color: var(--success);
+}
+
+.settings__sync-status--pending {
+  color: var(--warning);
+}
+
+.settings__sync-status--offline {
+  color: var(--text-muted);
+}
+
+.settings__sync-status--error {
+  color: var(--danger);
+}
+
+.settings__sync-time {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.settings__sync-error {
+  margin: 0;
+  font-size: 11px;
+  color: var(--danger);
+  line-height: 1.4;
+}
+
+.settings__spin {
+  animation: settings-spin 0.8s linear infinite;
+}
+
+@keyframes settings-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .settings__version {
   margin-top: auto;
   text-align: center;

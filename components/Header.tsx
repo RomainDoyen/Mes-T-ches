@@ -1,6 +1,7 @@
 import { Settings2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import iconUrl from '@/assets/icons/48.png';
+import { SyncBadge } from '@/components/SyncBadge';
 import './Header.scss';
 
 interface HeaderProps {
@@ -40,6 +41,7 @@ export function Header({
           {activeCount}
         </span>
         <div className="header__actions">
+          <SyncBadge />
           <button
             type="button"
             className="header__icon-btn"
